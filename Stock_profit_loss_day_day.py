@@ -4,8 +4,6 @@ calculates daily profit/loss for selected stocks, and visualizes the data with
 color-coded formatting. It also provides interactive candlestick charts using Plotly
 to help users analyze stock price movements over specified time periods.
 """
-# COMMAND TO EXECUTE: streamlit run c:\users\sreed\.spyder-py3\sree-analysis\stock_profit_loss_day_day.py
-
 import streamlit as st
 import pandas as pd
 import yfinance as yf
@@ -66,6 +64,7 @@ def main():
     end_date = st.date_input('End Date', value=pd.to_datetime('2024-07-11'))
 
     if st.button('Show Results'):
+        show_results_clicked = True
         for symbol in symbols:
             # Get the stock data
             stock_data = get_stock_data(symbol, start_date, end_date)
@@ -84,5 +83,11 @@ def main():
                 # Create candlestick chart
                 create_candlestick_chart(stock_data_with_profit_loss, symbol)
 
+    # Show "New Analysis" button only if "Show Results" button has been clicked
+    if 'show_results_clicked' in locals() and show_results_clicked:
+        if st.button('New Analysis'):
+            st.experimental_rerun()
+
 if __name__ == "__main__":
     main()
+
