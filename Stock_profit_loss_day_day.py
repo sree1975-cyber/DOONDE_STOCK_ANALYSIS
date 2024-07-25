@@ -78,6 +78,8 @@ def main():
     if st.button('Show Results'):
         show_results_clicked = True
         for symbol in symbols:
+            # Get the historical data and display info
+            history = get_historical_data(symbol)            
             # Get the stock data
             stock_data = get_stock_data(symbol, start_date, end_date)
 
