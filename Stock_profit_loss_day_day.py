@@ -9,6 +9,18 @@ import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
 
+def get_historical_data(symbol):
+    # Fetch the historical data for a stock
+    ticker = yf.Ticker(symbol)
+    history = ticker.history(period="max")
+    
+    # Display the ticker symbol, earliest and latest available dates
+    st.write(f"Ticker symbol: {ticker.info['symbol']}")
+    st.write(f"Data available from: {history.index[0]}")
+    st.write(f"Data available to: {history.index[-1]}")
+    
+    return history
+
 def get_stock_data(symbol, start_date, end_date):
     # Download the historical data
     data = yf.download(symbol, start=start_date, end=end_date)
