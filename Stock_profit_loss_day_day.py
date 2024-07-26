@@ -16,7 +16,10 @@ def get_historical_data(symbol):
     
     # Display the ticker symbol, earliest and latest available dates
     st.write(f"Ticker symbol: {ticker.info['symbol']}")
-    st.write(f"History Data available from: {history.index[0]} to: {history.index[-1]}")
+    start_date = history.index[0].date().isoformat()
+    end_date = history.index[-1].date().isoformat()
+    st.write(f"History Data available From: {start_date} To: {end_date}")
+    #st.write(f"History Data available from: {history.index[0]} to: {history.index[-1]}")
     #st.write(f"History Data available to: {history.index[-1]}")
     
     return history
