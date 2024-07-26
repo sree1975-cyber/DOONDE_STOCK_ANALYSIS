@@ -18,7 +18,7 @@ def get_historical_data(symbol):
     st.write(f"Ticker symbol: {ticker.info['symbol']}")
     start_date = history.index[0].date().isoformat()
     end_date = history.index[-1].date().isoformat()
-    st.write(f"Note:Historical data is available for the period From: {start_date} To: {end_date}")  
+    st.write(f"Note: Historical data is available for the period From: {start_date} To: {end_date}")  
     return history
 
 def get_stock_data(symbol, start_date, end_date):
