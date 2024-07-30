@@ -73,7 +73,7 @@ def main():
     symbols_input = st.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
     symbols = [symbol.strip() for symbol in symbols_input.split(',')]
     start_date = st.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
-    end_date = st.date_input("End Date", datetime.today())
+    end_date = st.date_input("End Date", value=pd.Timestamp.today())
 
     if st.button('Show Results'):
         show_results_clicked = True
