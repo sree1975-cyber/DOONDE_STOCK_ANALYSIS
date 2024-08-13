@@ -8,100 +8,180 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 def get_historical_data(symbol):
-    # Fetch the historical data for a stock
     ticker = yf.Ticker(symbol)
     history = ticker.history(period="max")
     
-    # Display the ticker symbol, earliest and latest available dates
-    st.write(f"Ticker symbol: {ticker.info['symbol']}")
-    start_date = history.index[0].date().isoformat()
-    end_date = history.index[-1].date().isoformat()
-    st.write(f"Note: Historical data is available for the period From: {start_date} To: {end_date}")  
+    st.write(f"**Ticker symbol**: {ticker.info['symbol']}")
+    st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
+    
     return history
 
 def get_stock_data(symbol, start_date, end_date):
-    # Download the historical data
     data = yf.download(symbol, start=start_date, end=end_date)
-    # Reset the index to have 'Date' as a column
     data.reset_index(inplace=True)
     return data
 
 def calculate_profit_loss(data):
-    # Calculate the profit/loss for each day
     data['Profit-Loss'] = data['Close'] - data['Open']
     return data
 
+def calculate_adj_open(data):
+    # Ensure 'Adj Close' and 'Open' columns exist
+    if 'Adj Close' not in data.columns:
+        raise ValueError("'Adj Close' column is missing in the DataFrame")
+    if 'Open' not in data.columns:
+        raise ValueError("'Open' column is missing in the DataFrame")
+
+    # Calculate Adj/Open as the difference between the previous day's Adj Close and the current day's Open
+    data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
+    
+    return data
+
+
+def add_end_result(data):
+    data['End_Result'] = data['Adj/Open'] + data['Profit-Loss']
+    return data
+
 def format_data(data):
-    # Format date to remove time
-    data['Date'] = data['Date'].dt.date
-    # Round all float columns to 2 decimal places
-    float_columns = ['Open', 'High', 'Low', 'Close', 'Profit-Loss']
-    data[float_columns] = data[float_columns].round(2)
+    # Ensure 'Date' is in date format (remove time part if present)
+    data['Date'] = pd.to_datetime(data['Date']).dt.date
     
-    # Color formatting based on profit/loss
-    def color_profit_loss(val):
-        if val >= 0:
-            return 'background-color: #7FFF7F'  # light green for profit
-        else:
-            return 'background-color: #FF7F7F'  # light red for loss
+    # Define columns to be rounded
+    float_columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Profit-Loss', 'Adj/Open', 'End_Result']
     
-    # Apply color formatting to entire DataFrame
-    formatted_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss'])
+    # Convert columns to numeric types if they aren't already
+    for col in float_columns:
+        if col in data.columns:
+            data[col] = pd.to_numeric(data[col], errors='coerce')  # Ensure the column is numeric
     
-    return formatted_data
+    # Round numerical columns to 3 decimal places
+    data[float_columns] = data[float_columns].applymap(lambda x: round(x, 3) if pd.notnull(x) else x)
+    
+    return data
 
 def create_candlestick_chart(data, symbol):
-    fig = go.Figure(data=[go.Candlestick(
+    # Calculate moving averages
+    data['SMA20'] = data['Close'].rolling(window=20).mean()
+    data['EMA20'] = data['Close'].ewm(span=20, adjust=False).mean()
+
+    # Create the candlestick chart
+    fig = go.Figure()
+
+    # Add candlestick trace
+    fig.add_trace(go.Candlestick(
         x=data['Date'],
         open=data['Open'],
         high=data['High'],
         low=data['Low'],
-        close=data['Close']
-    )])
-    fig.update_layout(title=f'{symbol} Stock Price',
-                      xaxis_title='Date',
-                      yaxis_title='Price',
-                      xaxis_rangeslider_visible=False)
-    st.plotly_chart(fig)
+        close=data['Close'],
+        name='Candlestick'
+    ))
+
+    # Add SMA trace
+    fig.add_trace(go.Scatter(
+        x=data['Date'],
+        y=data['SMA20'],
+        mode='lines',
+        name='SMA 20',
+        line=dict(color='blue')
+    ))
+
+    # Add EMA trace
+    fig.add_trace(go.Scatter(
+        x=data['Date'],
+        y=data['EMA20'],
+        mode='lines',
+        name='EMA 20',
+        line=dict(color='red')
+    ))
+
+    fig.update_layout(
+        title=f'{symbol} Stock Price with Moving Averages',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        xaxis_rangeslider_visible=False,
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1m", step="month", stepmode="backward"),
+                    dict(count=6, label="6m", step="month", stepmode="backward"),
+                    dict(count=1, label="YTD", step="year", stepmode="todate"),
+                    dict(count=1, label="1y", step="year", stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(visible=True),
+            type="date"
+        ),
+        yaxis=dict(
+            fixedrange=False
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+
+    # Add hover text to traces
+    fig.update_traces(
+        hovertext=data.apply(lambda row: f"Date: {row['Date']}<br>Open: {row['Open']:.3f}<br>High: {row['High']:.3f}<br>Low: {row['Low']:.3f}<br>Close: {row['Close']:.3f}<br>Profit-Loss: {row['Profit-Loss']:.3f}<br>Adj/Open: {row['Adj/Open']:.3f}<br>End_Result: {row['End_Result']:.3f}<br>SMA20: {row['SMA20']:.3f}<br>EMA20: {row['EMA20']:.3f}", axis=1),
+        hoverinfo="text"
+    )
+
+    return fig
+
 
 def main():
     st.title('Stock Data Analysis')
 
-    # User inputs
-    symbols_input = st.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
+    st.sidebar.header('User Input')
+    symbols_input = st.sidebar.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
     symbols = [symbol.strip() for symbol in symbols_input.split(',')]
-    start_date = st.date_input('Start Date', value=pd.to_datetime('2020-01-01'))
-    end_date = st.date_input("End Date", value=pd.Timestamp.today())
+    start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
+    #end_date = st.sidebar.date_input('End Date', value=pd.to_datetime('2024-07-11'))
+    #end_date = st.sidebar.date_input('End Date', value=datetime.now().date())
+    end_date = st.sidebar.date_input('End Date', value=datetime.now().date() + timedelta(days=1))
+    
+    # Initialize the variable
+    show_results_clicked = False
 
-    if st.button('Show Results'):
+    if st.sidebar.button('Show Results'):
         show_results_clicked = True
+
+    if show_results_clicked:
         for symbol in symbols:
-            # Get the historical data and display info
-            history = get_historical_data(symbol)            
-            # Get the stock data
+            history = get_historical_data(symbol)
             stock_data = get_stock_data(symbol, start_date, end_date)
 
             if not stock_data.empty:
-                # Calculate profit/loss
-                stock_data_with_profit_loss = calculate_profit_loss(stock_data)
+                stock_data = calculate_profit_loss(stock_data)
+                stock_data = calculate_adj_open(stock_data)
+                stock_data = add_end_result(stock_data)
 
-                # Format data with color coding
-                formatted_data = format_data(stock_data_with_profit_loss)
+                formatted_data = format_data(stock_data)
 
-                # Display results for each symbol
                 st.subheader(f'{symbol} Stock Data')
-                st.dataframe(formatted_data, width=800, height=400)
+                #st.dataframe(formatted_data, width=1200, height=400)
+                st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
+                      
+                fig = create_candlestick_chart(stock_data, symbol)
+                st.plotly_chart(fig)
 
-                # Create candlestick chart
-                create_candlestick_chart(stock_data_with_profit_loss, symbol)
-
-    # Show "New Analysis" button only if "Show Results" button has been clicked
-    if 'show_results_clicked' in locals() and show_results_clicked:
-        if st.button('New Analysis'):
-            st.experimental_rerun()
+                                  
+    if st.sidebar.button('New Analysis'):
+        # Show "New Analysis" button only if "Show Results" button has been clicked
+        if show_results_clicked:
+            # Clear the session state and refresh the app
+            st.session_state.clear()
+            st.experimental_rerun()  # Ensure this line is compatible with your Streamlit version
 
 if __name__ == "__main__":
     main()
+
 
