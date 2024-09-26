@@ -67,6 +67,9 @@ def format_data(data):
 
      # Apply color formatting to the 'Profit-Loss' and 'End_Result' columns
     styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'End_Result'])
+
+     # Ensure that the formatted table displays values with 3 decimal places
+    styled_data = styled_data.format(subset=float_columns, formatter="{:.3f}")
     
     return styled_data
 
