@@ -10,6 +10,11 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
+# Helper function to color the profit/loss and end_result columns
+def color_profit_loss(val):
+    color = 'green' if val > 0 else 'red' if val < 0 else 'black'
+    return f'color: {color}'
+
 def get_historical_data(symbol):
     ticker = yf.Ticker(symbol)
     history = ticker.history(period="max")
@@ -59,6 +64,9 @@ def format_data(data):
     
     # Round numerical columns to 3 decimal places
     data[float_columns] = data[float_columns].applymap(lambda x: round(x, 3) if pd.notnull(x) else x)
+
+     # Apply color formatting to the 'Profit-Loss' and 'End_Result' columns
+    styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'End_Result'])
     
     return data
 
