@@ -68,7 +68,7 @@ def format_data(data):
      # Apply color formatting to the 'Profit-Loss' and 'End_Result' columns
     styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'End_Result'])
     
-    return data
+    return styled_data
 
 def create_candlestick_chart(data, symbol):
     # Calculate moving averages
