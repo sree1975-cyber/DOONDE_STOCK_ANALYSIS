@@ -24,6 +24,17 @@ def get_historical_data(symbol):
     
     return history
 
+def calculate_growth(data):
+    # Get the open prices at the start and end of the selected period
+    start_open = data['Open'].iloc[0]  # Open price on the first date
+    end_open = data['Open'].iloc[-1]    # Open price on the last date
+
+    # Calculate growth value and percentage
+    growth_value = end_open - start_open
+    growth_percentage = (growth_value / start_open) * 100 if start_open != 0 else 0
+    
+    return growth_value, growth_percentage
+
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
     data.reset_index(inplace=True)
@@ -180,6 +191,11 @@ def main():
                 st.subheader(f'{symbol} Stock Data')
                 #st.dataframe(formatted_data, width=1200, height=400)
                 st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
+
+                # Calculate growth and display it
+                growth_value, growth_percentage = calculate_growth(stock_data)
+                st.write(f"**Growth Value**: {growth_value:.2f}")
+                st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
                       
                 fig = create_candlestick_chart(stock_data, symbol)
                 st.plotly_chart(fig)
