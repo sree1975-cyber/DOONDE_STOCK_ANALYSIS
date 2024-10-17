@@ -23,8 +23,13 @@ def get_historical_data(symbol):
     st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
     
     return history
+
+def color_growth(val, is_percentage=False):
+    if is_percentage:
+        return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
+    return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
+
 def format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage):
-    # Prepare the summary DataFrame
     summary_data = {
         "Description": [
             "History Start Date",
@@ -46,18 +51,10 @@ def format_growth_summary(start_date, start_open, end_date, end_close, growth_va
     
     summary_df = pd.DataFrame(summary_data)
     
-    # Apply formatting
-    summary_df_styled = summary_df.style.applymap(lambda x: color_growth(x, is_percentage=False), subset=['Value']).set_properties(subset=['Value'], **{'text-align': 'left'})
-    summary_df_styled = summary_df_styled.applymap(lambda x: color_growth(x[:-1], is_percentage=True), subset=['Value'], axis=1)
-
-    return summary_df_styled
-
-# Define all functions above main()
-def calculate_growth(data):
-    # ... (function implementation)
-
-def format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage):
-    # ... (function implementation)
+    # Optionally, apply color formatting to the Value column
+    styled_summary_df = summary_df.style.applymap(lambda x: color_growth(x, is_percentage=False), subset=['Value'])
+    
+    return styled_summary_df
 
 
 def get_stock_data(symbol, start_date, end_date):
