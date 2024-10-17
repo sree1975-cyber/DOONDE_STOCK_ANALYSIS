@@ -23,19 +23,16 @@ def get_historical_data(symbol):
     st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
     
     return history
-    
-def calculate_growth(data):
-    # Get the open prices at the start and end of the selected period
-    start_date = data['Date'].iloc[0]
-    end_date = data['Date'].iloc[-1]
-    start_open = data['Open'].iloc[0]  # Open price on the first date
-    end_close = data['Close'].iloc[-1]  # Close price on the last date
+ def color_growth(val, is_percentage=False):
+    # Convert value to float if possible
+    try:
+        float_val = float(val)  # Convert to float for comparison
+    except (ValueError, TypeError):
+        return 'color: black'  # Return black for non-numeric values
 
-    # Calculate growth value and percentage
-    growth_value = end_close - start_open
-    growth_percentage = (growth_value / start_open) * 100 if start_open != 0 else 0
-
-    return start_date, start_open, end_date, end_close, growth_value, growth_percentage
+    if is_percentage:
+        return 'color: green' if float_val > 0 else 'color: red' if float_val < 0 else 'color: black'
+    return 'color: green' if float_val > 0 else 'color: red' if float_val < 0 else 'color: black'
 
 
 def format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage):
@@ -61,17 +58,12 @@ def format_growth_summary(start_date, start_open, end_date, end_close, growth_va
     
     summary_df = pd.DataFrame(summary_data)
     
-    # Add color formatting based on profit/loss for growth value and percentage
-    def color_growth(val, is_percentage=False):
-        if is_percentage:
-            return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
-        return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
-
     # Apply formatting
     summary_df_styled = summary_df.style.applymap(lambda x: color_growth(x, is_percentage=False), subset=['Value']).set_properties(subset=['Value'], **{'text-align': 'left'})
-    summary_df_styled = summary_df_styled.applymap(lambda x: color_growth(float(x[:-1]), is_percentage=True), subset=['Value'], axis=1)
+    summary_df_styled = summary_df_styled.applymap(lambda x: color_growth(x[:-1], is_percentage=True), subset=['Value'], axis=1)
 
     return summary_df_styled
+   
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
