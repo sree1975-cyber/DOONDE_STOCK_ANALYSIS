@@ -23,7 +23,7 @@ def get_historical_data(symbol):
     st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
     
     return history
- def color_growth(val, is_percentage=False):
+def color_growth(val, is_percentage=False):
     # Convert value to float if possible
     try:
         float_val = float(val)  # Convert to float for comparison
@@ -63,7 +63,7 @@ def format_growth_summary(start_date, start_open, end_date, end_close, growth_va
     summary_df_styled = summary_df_styled.applymap(lambda x: color_growth(x[:-1], is_percentage=True), subset=['Value'], axis=1)
 
     return summary_df_styled
-   
+
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
