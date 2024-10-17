@@ -23,17 +23,55 @@ def get_historical_data(symbol):
     st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
     
     return history
-
+    
 def calculate_growth(data):
     # Get the open prices at the start and end of the selected period
+    start_date = data['Date'].iloc[0]
+    end_date = data['Date'].iloc[-1]
     start_open = data['Open'].iloc[0]  # Open price on the first date
-    end_open = data['Open'].iloc[-1]    # Open price on the last date
+    end_close = data['Close'].iloc[-1]  # Close price on the last date
 
     # Calculate growth value and percentage
-    growth_value = end_open - start_open
+    growth_value = end_close - start_open
     growth_percentage = (growth_value / start_open) * 100 if start_open != 0 else 0
+
+    return start_date, start_open, end_date, end_close, growth_value, growth_percentage
+
+
+def format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage):
+    # Prepare the summary DataFrame
+    summary_data = {
+        "Description": [
+            "History Start Date",
+            "Start Open Price",
+            "History End Date",
+            "End Close Price",
+            "Growth Value",
+            "Growth Percentage"
+        ],
+        "Value": [
+            start_date.strftime('%Y-%m-%d'),
+            start_open,
+            end_date.strftime('%Y-%m-%d'),
+            end_close,
+            growth_value,
+            f"{growth_percentage:.2f}%"
+        ]
+    }
     
-    return growth_value, growth_percentage
+    summary_df = pd.DataFrame(summary_data)
+    
+    # Add color formatting based on profit/loss for growth value and percentage
+    def color_growth(val, is_percentage=False):
+        if is_percentage:
+            return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
+        return 'color: green' if val > 0 else 'color: red' if val < 0 else 'color: black'
+
+    # Apply formatting
+    summary_df_styled = summary_df.style.applymap(lambda x: color_growth(x, is_percentage=False), subset=['Value']).set_properties(subset=['Value'], **{'text-align': 'left'})
+    summary_df_styled = summary_df_styled.applymap(lambda x: color_growth(float(x[:-1]), is_percentage=True), subset=['Value'], axis=1)
+
+    return summary_df_styled
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
@@ -192,10 +230,12 @@ def main():
                 #st.dataframe(formatted_data, width=1200, height=400)
                 st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
 
-                # Calculate growth and display it
-                growth_value, growth_percentage = calculate_growth(stock_data)
-                st.write(f"**Growth Value**: {growth_value:.2f}")
-                st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
+               # Calculate growth and display it
+                start_date, start_open, end_date, end_close, growth_value, growth_percentage = calculate_growth(stock_data)
+                summary_table = format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage)
+
+                st.write("**Growth Summary**:")
+                st.dataframe(summary_table)
                       
                 fig = create_candlestick_chart(stock_data, symbol)
                 st.plotly_chart(fig)
