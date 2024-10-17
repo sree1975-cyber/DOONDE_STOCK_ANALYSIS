@@ -214,12 +214,11 @@ def main():
                 #st.dataframe(formatted_data, width=1200, height=400)
                 st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
 
-                # Calculate growth and display it
+              # Calculate growth and display it
                 start_date, start_open, end_date, end_close, growth_value, growth_percentage = calculate_growth(stock_data)
                 summary_table = format_growth_summary(start_date, start_open, end_date, end_close, growth_value, growth_percentage)
 
                 st.write("**Growth Summary**:")
-                st.dataframe(summary_table)
                       
                 fig = create_candlestick_chart(stock_data, symbol)
                 st.plotly_chart(fig)
