@@ -53,6 +53,13 @@ def fetch_stock_data(tickers):
 def evaluate_investment(performance):
     total_return = performance['Total Return']
     volatility = performance['Volatility']
+
+    # Ensure these values are accessed correctly
+    if isinstance(total_return, pd.Series):
+        total_return = total_return.item()  # Convert to scalar if Series
+    if isinstance(volatility, pd.Series):
+        volatility = volatility.item()  # Convert to scalar if Series
+
     sharpe_ratio = total_return / volatility if volatility != 0 else np.nan
 
     if total_return > 0.2:  # Example threshold: 20% return
@@ -79,12 +86,14 @@ if st.button("Analyze"):
         # Create a DataFrame for the performance data
         performance_df = pd.DataFrame.from_dict(performance_data, orient='index')
 
-        # Ensure the Total Return column is numeric
+        # Ensure the Total Return and Volatility columns are numeric
         performance_df['Total Return'] = pd.to_numeric(performance_df['Total Return'], errors='coerce')
+        performance_df['Volatility'] = pd.to_numeric(performance_df['Volatility'], errors='coerce')
 
-        # Drop rows with NaN values in Total Return
-        performance_df.dropna(subset=['Total Return'], inplace=True)
+        # Drop rows with NaN values in Total Return or Volatility
+        performance_df.dropna(subset=['Total Return', 'Volatility'], inplace=True)
 
+        # Apply the evaluation function
         performance_df['Investment Decision'], performance_df['Sharpe Ratio'] = zip(*performance_df.apply(evaluate_investment, axis=1))
 
         # Create a collapsible table for performance data
@@ -118,4 +127,3 @@ if st.button("Analyze"):
             st.warning("No valid performance data to display.")
     else:
         st.warning("No performance data available.")
-
