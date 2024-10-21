@@ -56,11 +56,17 @@ def evaluate_investment(performance):
     volatility = performance['Volatility']
     sharpe_ratio = total_return / volatility if volatility != 0 else np.nan
 
-    if total_return > 0.2:  # Example threshold: 20% return
+    # Make sure you're comparing scalar values, not Series
+    if isinstance(total_return, pd.Series):
+        total_return_value = total_return.iloc[0]  # Or another appropriate index
+    else:
+        total_return_value = total_return
+
+    if total_return_value > 0.2:  # Example threshold: 20% return
         decision = "Strong Buy"
-    elif total_return > 0.1:  # 10% to 20% return
+    elif total_return_value > 0.1:  # 10% to 20% return
         decision = "Buy"
-    elif total_return > 0:  # Positive return
+    elif total_return_value > 0:  # Positive return
         decision = "Hold"
     else:
         decision = "Sell"
