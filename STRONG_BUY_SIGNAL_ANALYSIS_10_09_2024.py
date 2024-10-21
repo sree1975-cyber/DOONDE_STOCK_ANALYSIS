@@ -42,11 +42,9 @@ def evaluate_investment(performance):
     total_return = performance['Total Return']
     volatility = performance['Volatility']
 
-    # Ensure the values are scalar
-    if isinstance(total_return, pd.Series):
-        total_return = total_return.item()
-    if isinstance(volatility, pd.Series):
-        volatility = volatility.item()
+    # Check if values are NaN
+    if pd.isna(total_return) or pd.isna(volatility):
+        return "N/A", np.nan  # Return default values
 
     sharpe_ratio = total_return / volatility if volatility != 0 else np.nan
 
@@ -77,7 +75,7 @@ if st.button("Analyze"):
         performance_df['Total Return'] = pd.to_numeric(performance_df['Total Return'], errors='coerce')
         performance_df['Volatility'] = pd.to_numeric(performance_df['Volatility'], errors='coerce')
 
-        # Drop NaN values
+        # Drop rows with NaN values
         performance_df.dropna(subset=['Total Return', 'Volatility'], inplace=True)
 
         # Apply the evaluation function
