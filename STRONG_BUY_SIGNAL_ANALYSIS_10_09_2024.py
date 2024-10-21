@@ -36,7 +36,6 @@ def fetch_stock_data(tickers):
                 # If today's data is not available, use yesterday's adjusted close price
                 today_open_price = df['Adj Close'].iloc[-1] if len(df) > 0 else None
             else:
-                # This case shouldn't normally occur since we're fetching the last year's data
                 today_open_price = None
                 
             data[ticker] = {
@@ -56,17 +55,11 @@ def evaluate_investment(performance):
     volatility = performance['Volatility']
     sharpe_ratio = total_return / volatility if volatility != 0 else np.nan
 
-    # Make sure you're comparing scalar values, not Series
-    if isinstance(total_return, pd.Series):
-        total_return_value = total_return.iloc[0]  # Or another appropriate index
-    else:
-        total_return_value = total_return
-
-    if total_return_value > 0.2:  # Example threshold: 20% return
+    if total_return > 0.2:  # Example threshold: 20% return
         decision = "Strong Buy"
-    elif total_return_value > 0.1:  # 10% to 20% return
+    elif total_return > 0.1:  # 10% to 20% return
         decision = "Buy"
-    elif total_return_value > 0:  # Positive return
+    elif total_return > 0:  # Positive return
         decision = "Hold"
     else:
         decision = "Sell"
@@ -85,15 +78,21 @@ if st.button("Analyze"):
     if performance_data:
         # Create a DataFrame for the performance data
         performance_df = pd.DataFrame.from_dict(performance_data, orient='index')
+
+        # Ensure the Total Return column is numeric
+        performance_df['Total Return'] = pd.to_numeric(performance_df['Total Return'], errors='coerce')
+
+        # Drop rows with NaN values in Total Return
+        performance_df.dropna(subset=['Total Return'], inplace=True)
+
         performance_df['Investment Decision'], performance_df['Sharpe Ratio'] = zip(*performance_df.apply(evaluate_investment, axis=1))
 
         # Create a collapsible table for performance data
         with st.expander("View Performance Data", expanded=True):
-            st.write(performance_df)  # Show performance data
+            st.write(performance_df)
 
         # Create a bar chart for total return
         if not performance_df.empty:
-            # Bar Chart
             bar_fig = px.bar(
                 performance_df,
                 x=performance_df.index,
@@ -119,3 +118,4 @@ if st.button("Analyze"):
             st.warning("No valid performance data to display.")
     else:
         st.warning("No performance data available.")
+
