@@ -45,11 +45,20 @@ def calculate_profit_loss(data):
     return data
 
 def calculate_adj_open(data):
-    # Ensure 'Adj Close' and 'Open' columns exist
+    # Check if 'Adj Close' column exists
     if 'Adj Close' not in data.columns:
-        raise ValueError("'Adj Close' column is missing in the DataFrame")
+        st.warning("'Adj Close' column is missing in the data. Using 'Close' instead.")
+        data['Adj Close'] = data['Close']  # Fallback to 'Close' if 'Adj Close' is missing
+    
+    # Ensure 'Open' column exists
     if 'Open' not in data.columns:
         raise ValueError("'Open' column is missing in the DataFrame")
+
+    # Calculate Adj/Open as the difference between the previous day's Adj Close and the current day's Open
+    data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
+    
+    return data
+
 
     # Calculate Adj/Open as the difference between the previous day's Adj Close and the current day's Open
     data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
