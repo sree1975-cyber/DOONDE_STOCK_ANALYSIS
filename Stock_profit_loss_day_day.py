@@ -16,13 +16,23 @@ def color_profit_loss(val):
     return f'color: {color}'
 
 def get_historical_data(symbol):
-    ticker = yf.Ticker(symbol)
-    history = ticker.history(period="max")
+    try:
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(period="max")
+        
+        # Check if the data is empty
+        if history.empty:
+            st.write(f"**No data available for {symbol}.**")
+            return None
+        
+        st.write(f"**Ticker symbol**: {ticker.info.get('symbol', 'N/A')}")
+        st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
+        
+        return history
     
-    st.write(f"**Ticker symbol**: {ticker.info['symbol']}")
-    st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
-    
-    return history
+    except Exception as e:
+        st.write(f"**Error retrieving data for {symbol}:** {str(e)}")
+        return None
 
 def color_growth(val, is_percentage=False):
     if is_percentage:
