@@ -3,50 +3,115 @@ import yfinance as yf
 import pandas as pd
 from datetime import date
 
-st.title("Stock Data Fetcher")
+st.title("Advanced Stock Data Analyzer")
 
-# Function to fetch stock data
+# Function to fetch comprehensive stock data
 def fetch_stock_data(symbols, start_date, end_date):
     try:
-        data = yf.download(symbols.split(','), start=start_date, end=end_date)
-        st.write("Available columns:", data.columns)  # Debug info
-        if 'Adj Close' in data.columns:
-            return data['Adj Close']
-        elif 'Close' in data.columns:
-            return data['Close']
-        else:
-            st.error("Neither 'Adj Close' nor 'Close' columns found in the data.")
+        data = yf.download(
+            symbols.split(','),
+            start=start_date,
+            end=end_date,
+            group_by='ticker',
+            progress=False,
+            threads=True
+        )
+        
+        if data.empty:
+            st.error("No data found for the given symbols and date range")
             return None
+            
+        return data
+
     except Exception as e:
-        st.error(f"An error occurred while fetching data: {str(e)}")
+        st.error(f"Error fetching data: {str(e)}")
         return None
 
-# Create a form for user input
+# Function to get additional fundamental data
+def get_fundamentals(symbol):
+    try:
+        ticker = yf.Ticker(symbol)
+        return {
+            'info': ticker.info,
+            'financials': ticker.financials,
+            'balance_sheet': ticker.balance_sheet,
+            'cashflow': ticker.cashflow,
+            'recommendations': ticker.recommendations,
+            'institutional_holders': ticker.institutional_holders
+        }
+    except Exception as e:
+        st.error(f"Error getting fundamentals for {symbol}: {str(e)}")
+        return None
+
+# Main form
 with st.form(key='stock_form'):
-    symbols = st.text_input("Enter stock symbols (comma-separated)", "AAPL,GOOGL,MSFT")
-    start_date = st.date_input("Start date", date(2020, 1, 1))
-    end_date = st.date_input("End date", date.today())
-    submit_button = st.form_submit_button(label='Fetch Data')
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        symbols = st.text_input("Enter symbols (comma-separated)", "AAPL,MSFT,GOOG")
+    with col2:
+        start_date = st.date_input("Start date", date(2020, 1, 1))
+    with col3:
+        end_date = st.date_input("End date", date.today())
+    
+    analysis_type = st.selectbox("Analysis Type", [
+        "Historical Prices", 
+        "Fundamental Data", 
+        "Institutional Holdings",
+        "Analyst Recommendations"
+    ])
+    
+    submit_button = st.form_submit_button("Run Analysis")
 
-# Display data when form is submitted
+# Process form submission
 if submit_button:
-    with st.spinner('Fetching data...'):
-        df = fetch_stock_data(symbols, start_date, end_date)
-    if df is not None and not df.empty:
-        st.success('Data fetched successfully!')
-        st.dataframe(df)
+    if start_date > end_date:
+        st.error("End date must be after start date")
     else:
-        st.warning('No data available for the given symbols and date range.')
+        with st.spinner('Analyzing data...'):
+            if analysis_type == "Historical Prices":
+                data = fetch_stock_data(symbols, start_date, end_date)
+                if data is not None:
+                    st.success("Found the following datasets:")
+                    
+                    # Show multi-ticker selection
+                    symbols_list = symbols.split(',')
+                    selected_symbol = st.selectbox("Select Symbol", symbols_list)
+                    
+                    # Show available metrics
+                    metrics = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+                    selected_metrics = st.multiselect("Select Metrics", metrics, default='Close')
+                    
+                    # Display selected data
+                    if len(symbols_list) > 1:
+                        st.dataframe(data[selected_symbol][selected_metrics])
+                    else:
+                        st.dataframe(data[selected_metrics])
+                        
+            else:
+                fundamental_data = get_fundamentals(symbols.split(',')[0])
+                if fundamental_data:
+                    if analysis_type == "Fundamental Data":
+                        st.subheader("Financial Statements")
+                        st.dataframe(fundamental_data['financials'])
+                        
+                    elif analysis_type == "Institutional Holdings":
+                        st.subheader("Top Institutional Holders")
+                        st.dataframe(fundamental_data['institutional_holders'])
+                        
+                    elif analysis_type == "Analyst Recommendations":
+                        st.subheader("Analyst Recommendations History")
+                        st.dataframe(fundamental_data['recommendations'])
 
-# Button for new analysis
-if st.button('New Analysis'):
+# Reset button
+if st.button("Reset Analysis"):
     st.experimental_rerun()
 
-# Display some information about using the app
-st.markdown("""
-## How to use this app:
-1. Enter stock symbols separated by commas (e.g., AAPL,GOOGL,MSFT)
-2. Select a start date and end date for the data range
-3. Click 'Fetch Data' to retrieve the stock information
-4. Use 'New Analysis' to clear the form and start over
-""")
+# Help section
+with st.expander("Usage Instructions"):
+    st.markdown("""
+    - **Multiple Symbols**: Enter comma-separated tickers (e.g., `AAPL,MSFT,GOOG`)
+    - **Historical Prices**: View OHLC data, volume, and adjusted close
+    - **Fundamental Data**: See financial statements for individual companies
+    - **Institutional Holdings**: View top institutional investors
+    - **Analyst Recommendations**: See recent analyst ratings
+    """)
