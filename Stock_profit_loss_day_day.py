@@ -111,11 +111,17 @@ def format_data(data):
             st.warning(f"Column '{col}' is missing in the data and cannot be styled.")
             return data  # Return the unstyled data if any required columns are missing
 
-    # Apply color formatting to the 'Profit-Loss', 'Adj/Open', and 'End_Result' columns
-    styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'Adj/Open', 'End_Result'])
-
-    # Ensure that the formatted table displays values with 3 decimal places
-    styled_data = styled_data.format(subset=float_columns, formatter="{:.3f}")
+    # Check if all columns in `float_columns` exist in the DataFrame before applying formatting
+    existing_columns_for_formatting = [col for col in float_columns if col in data.columns]
+    
+    if existing_columns_for_formatting:
+        # Apply color formatting to the 'Profit-Loss', 'Adj/Open', and 'End_Result' columns
+        styled_data = data.style.applymap(color_profit_loss, subset=existing_columns_for_formatting)
+        
+        # Ensure that the formatted table displays values with 3 decimal places
+        styled_data = styled_data.format(subset=existing_columns_for_formatting, formatter="{:.3f}")
+    else:
+        styled_data = data  # Return the unstyled data if no columns are available for formatting
     
     return styled_data
 
