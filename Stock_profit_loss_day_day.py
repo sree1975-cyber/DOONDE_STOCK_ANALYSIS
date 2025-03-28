@@ -47,7 +47,7 @@ def get_stock_data(symbol, start_date, end_date):
     # Flatten the MultiIndex columns
     data.columns = [col[0] for col in data.columns]
     
-    st.write(f"Columns available for {symbol}: {data.columns}")
+    #st.write(f"Columns available for {symbol}: {data.columns}")
     data.reset_index(inplace=True)
     return data
 
@@ -60,7 +60,7 @@ def calculate_profit_loss(data):
 def calculate_adj_open(data):
     # Check if 'Adj Close' column exists
     if 'Adj Close' not in data.columns:
-        st.warning("'Adj Close' column is missing in the data. Using 'Close' instead.")
+       # st.warning("'Adj Close' column is missing in the data. Using 'Close' instead.")
         data['Adj Close'] = data['Close']  # Fallback to 'Close' if 'Adj Close' is missing
     
     # Ensure 'Open' column exists
