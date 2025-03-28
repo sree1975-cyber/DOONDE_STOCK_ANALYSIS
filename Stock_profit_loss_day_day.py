@@ -37,6 +37,7 @@ def get_historical_data(symbol, retries=3):
         
         except Exception as e:
             attempt += 1
+            st.write(f"Error during attempt {attempt} for {symbol}: {str(e)}")
             if attempt == retries:
                 st.write(f"**Error retrieving data for {symbol} after {retries} attempts: {str(e)}**")
                 return None
@@ -231,5 +232,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+        
 
 
