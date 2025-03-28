@@ -9,30 +9,38 @@ import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import time
 
 # Helper function to color the profit/loss and end_result columns
 def color_profit_loss(val):
     color = 'green' if val > 0 else 'red' if val < 0 else 'black'
     return f'color: {color}'
 
-def get_historical_data(symbol):
-    try:
-        ticker = yf.Ticker(symbol)
-        history = ticker.history(period="max")
+def get_historical_data(symbol, retries=3):
+    attempt = 0
+    while attempt < retries:
+        try:
+            ticker = yf.Ticker(symbol)
+            history = ticker.history(period="max")
+
+            # Check if the history is empty (invalid or no data)
+            if history.empty:
+                st.write(f"**No data available for {symbol}.** Please check if the symbol is valid.")
+                return None
+
+            # Safely retrieve info
+            ticker_info = ticker.info
+            st.write(f"**Ticker symbol**: {ticker_info.get('symbol', 'N/A')}")
+            st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
+
+            return history
         
-        # Check if the data is empty
-        if history.empty:
-            st.write(f"**No data available for {symbol}.**")
-            return None
-        
-        st.write(f"**Ticker symbol**: {ticker.info.get('symbol', 'N/A')}")
-        st.write(f"**History Data available from**: {history.index[0].strftime('%Y-%m-%d')} to {history.index[-1].strftime('%Y-%m-%d')}")
-        
-        return history
-    
-    except Exception as e:
-        st.write(f"**Error retrieving data for {symbol}:** {str(e)}")
-        return None
+        except Exception as e:
+            attempt += 1
+            if attempt == retries:
+                st.write(f"**Error retrieving data for {symbol} after {retries} attempts: {str(e)}**")
+                return None
+            time.sleep(2)  # Wait for 2 seconds before retrying
 
 def color_growth(val, is_percentage=False):
     if is_percentage:
@@ -49,7 +57,6 @@ def calculate_growth(data):
     growth_percentage = (growth_value / start_open) * 100 if start_open != 0 else 0
     
     return growth_value, growth_percentage
-
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
@@ -72,7 +79,6 @@ def calculate_adj_open(data):
     
     return data
 
-
 def add_end_result(data):
     data['End_Result'] = data['Adj/Open'] + data['Profit-Loss']
     return data
@@ -92,10 +98,10 @@ def format_data(data):
     # Round numerical columns to 3 decimal places
     data[float_columns] = data[float_columns].applymap(lambda x: round(x, 3) if pd.notnull(x) else x)
 
-     # Apply color formatting to the 'Profit-Loss' 'Adj/Open' and 'End_Result' columns
+    # Apply color formatting to the 'Profit-Loss' 'Adj/Open' and 'End_Result' columns
     styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'Adj/Open','End_Result'])
 
-     # Ensure that the formatted table displays values with 3 decimal places
+    # Ensure that the formatted table displays values with 3 decimal places
     styled_data = styled_data.format(subset=float_columns, formatter="{:.3f}")
     
     return styled_data
@@ -143,7 +149,7 @@ def create_candlestick_chart(data, symbol):
         xaxis_rangeslider_visible=False,
         xaxis=dict(
             rangeselector=dict(
-                buttons=list([
+                buttons=list([ 
                     dict(count=1, label="1m", step="month", stepmode="backward"),
                     dict(count=6, label="6m", step="month", stepmode="backward"),
                     dict(count=1, label="YTD", step="year", stepmode="todate"),
@@ -182,8 +188,6 @@ def main():
     symbols_input = st.sidebar.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
     symbols = [symbol.strip() for symbol in symbols_input.split(',')]
     start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
-    #end_date = st.sidebar.date_input('End Date', value=pd.to_datetime('2024-07-11'))
-    #end_date = st.sidebar.date_input('End Date', value=datetime.now().date())
     end_date = st.sidebar.date_input('End Date', value=datetime.now().date() + timedelta(days=1))
     
     # Initialize the variable
@@ -195,26 +199,27 @@ def main():
     if show_results_clicked:
         for symbol in symbols:
             history = get_historical_data(symbol)
-            stock_data = get_stock_data(symbol, start_date, end_date)
 
-            if not stock_data.empty:
-                stock_data = calculate_profit_loss(stock_data)
-                stock_data = calculate_adj_open(stock_data)
-                stock_data = add_end_result(stock_data)
+            if history is not None:  # Proceed only if history is valid
+                stock_data = get_stock_data(symbol, start_date, end_date)
 
-                formatted_data = format_data(stock_data)
+                if not stock_data.empty:
+                    stock_data = calculate_profit_loss(stock_data)
+                    stock_data = calculate_adj_open(stock_data)
+                    stock_data = add_end_result(stock_data)
 
-                st.subheader(f'{symbol} Stock Data')
-                #st.dataframe(formatted_data, width=1200, height=400)
-                st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
+                    formatted_data = format_data(stock_data)
 
-                 # Calculate growth and display it
-                growth_value, growth_percentage = calculate_growth(stock_data)
-                st.write(f"**Growth Value**: {growth_value:.2f}")
-                st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
+                    st.subheader(f'{symbol} Stock Data')
+                    st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
+
+                    # Calculate growth and display it
+                    growth_value, growth_percentage = calculate_growth(stock_data)
+                    st.write(f"**Growth Value**: {growth_value:.2f}")
+                    st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
                       
-                fig = create_candlestick_chart(stock_data, symbol)
-                st.plotly_chart(fig)
+                    fig = create_candlestick_chart(stock_data, symbol)
+                    st.plotly_chart(fig)
 
                                   
     if st.sidebar.button('New Analysis'):
