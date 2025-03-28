@@ -25,19 +25,30 @@ def calculate_growth(data):
     return growth_value, growth_percentage
 
 def get_stock_data(symbol, start_date, end_date):
-    data = yf.download(symbol, start=start_date, end=end_date)
+    data = yf.download(symbol, start=start_date, end=end_date, auto_adjust=False)
     data.reset_index(inplace=True)
     return data
+
 
 def calculate_profit_loss(data):
     data['Profit-Loss'] = data['Close'] - data['Open']
     return data
 
 def calculate_adj_open(data):
-    if 'Adj Close' not in data.columns or 'Open' not in data.columns:
+    if 'Close' not in data.columns or 'Open' not in data.columns:
         raise ValueError("Required columns are missing in the DataFrame")
-    data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
+    
+    if 'Adj Close' not in data.columns:
+        # Calculate Adj Close using Close and any available split/dividend info
+        data['Adj Close'] = data['Close']
+        if 'Stock Splits' in data.columns:
+            data['Adj Close'] *= (1 / (1 + data['Stock Splits']))
+        if 'Dividends' in data.columns:
+            data['Adj Close'] *= (1 - data['Dividends'] / data['Close'])
+    
+    data['Adj/Open'] = data['Open'] * (data['Adj Close'] / data['Close'])
     return data
+
 
 def add_end_result(data):
     data['End_Result'] = data['Adj/Open'] + data['Profit-Loss']
