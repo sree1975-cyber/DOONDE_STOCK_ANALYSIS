@@ -37,8 +37,10 @@ def calculate_growth(data):
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
+    st.write(f"Columns available for {symbol}: {data.columns}")
     data.reset_index(inplace=True)
     return data
+
 
 def calculate_profit_loss(data):
     data['Profit-Loss'] = data['Close'] - data['Open']
