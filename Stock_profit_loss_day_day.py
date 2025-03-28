@@ -187,7 +187,7 @@ def main():
     st.sidebar.header('User Input')
     symbols_input = st.sidebar.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
     symbols = [symbol.strip() for symbol in symbols_input.split(',')]
-    start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
+    start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2025-01-01'))
     end_date = st.sidebar.date_input('End Date', value=datetime.now().date())  # Corrected end date handling
     
     # Initialize the variable
