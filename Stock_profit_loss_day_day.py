@@ -1,3 +1,9 @@
+"""
+This Stock Data Analysis tool retrieves historical stock data from Yahoo Finance,
+calculates daily profit/loss for selected stocks, and visualizes the data with
+color-coded formatting. It also provides interactive candlestick charts using Plotly
+to help users analyze stock price movements over specified time periods.
+"""
 import streamlit as st
 import pandas as pd
 import yfinance as yf
@@ -37,38 +43,22 @@ def calculate_growth(data):
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
-    
-    # Flatten the MultiIndex columns
-    data.columns = [col[0] for col in data.columns]
-    
-    st.write(f"Columns available for {symbol}: {data.columns}")
     data.reset_index(inplace=True)
     return data
-
-
 
 def calculate_profit_loss(data):
     data['Profit-Loss'] = data['Close'] - data['Open']
     return data
 
 def calculate_adj_open(data):
-    # Check if 'Adj Close' column exists
+    # Ensure 'Adj Close' and 'Open' columns exist
     if 'Adj Close' not in data.columns:
-        st.warning("'Adj Close' column is missing in the data. Using 'Close' instead.")
-        data['Adj Close'] = data['Close']  # Fallback to 'Close' if 'Adj Close' is missing
-    
-    # Ensure 'Open' column exists
+        raise ValueError("'Adj Close' column is missing in the DataFrame")
     if 'Open' not in data.columns:
         raise ValueError("'Open' column is missing in the DataFrame")
 
     # Calculate Adj/Open as the difference between the previous day's Adj Close and the current day's Open
-    data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
-    
-    return data
-
-
-    # Calculate Adj/Open as the difference between the previous day's Adj Close and the current day's Open
-    data['Adj/Open'] = data['Open'] - data['Adj Close'].shift(1)
+    data['Adj/Open'] = data['Open'] - data['Close'].shift(1)
     
     return data
 
@@ -82,7 +72,7 @@ def format_data(data):
     data['Date'] = pd.to_datetime(data['Date']).dt.date
     
     # Define columns to be rounded
-    float_columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Profit-Loss', 'Adj/Open', 'End_Result']
+    float_columns = ['Open', 'High', 'Low', 'Close','Profit-Loss', 'Adj/Open', 'End_Result']
     
     # Convert columns to numeric types if they aren't already
     for col in float_columns:
@@ -143,7 +133,7 @@ def create_candlestick_chart(data, symbol):
         xaxis_rangeslider_visible=False,
         xaxis=dict(
             rangeselector=dict(
-                buttons=list([ 
+                buttons=list([
                     dict(count=1, label="1m", step="month", stepmode="backward"),
                     dict(count=6, label="6m", step="month", stepmode="backward"),
                     dict(count=1, label="YTD", step="year", stepmode="todate"),
@@ -182,7 +172,9 @@ def main():
     symbols_input = st.sidebar.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
     symbols = [symbol.strip() for symbol in symbols_input.split(',')]
     start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
-    end_date = st.sidebar.date_input('End Date', value=datetime.now().date())  # Corrected end date handling
+    #end_date = st.sidebar.date_input('End Date', value=pd.to_datetime('2024-07-11'))
+    #end_date = st.sidebar.date_input('End Date', value=datetime.now().date())
+    end_date = st.sidebar.date_input('End Date', value=datetime.now().date() + timedelta(days=1))
     
     # Initialize the variable
     show_results_clicked = False
@@ -195,27 +187,26 @@ def main():
             history = get_historical_data(symbol)
             stock_data = get_stock_data(symbol, start_date, end_date)
 
-            if stock_data.empty:
-                st.warning(f"No data available for {symbol} between {start_date} and {end_date}.")
-                continue  # Skip further processing for this stock symbol
+            if not stock_data.empty:
+                stock_data = calculate_profit_loss(stock_data)
+                stock_data = calculate_adj_open(stock_data)
+                stock_data = add_end_result(stock_data)
 
-            stock_data = calculate_profit_loss(stock_data)
-            stock_data = calculate_adj_open(stock_data)
-            stock_data = add_end_result(stock_data)
+                formatted_data = format_data(stock_data)
 
-            formatted_data = format_data(stock_data)
+                st.subheader(f'{symbol} Stock Data')
+                #st.dataframe(formatted_data, width=1200, height=400)
+                st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
 
-            st.subheader(f'{symbol} Stock Data')
-            st.dataframe(formatted_data, use_container_width=True)  # Ensure the table uses available width
+                 # Calculate growth and display it
+                growth_value, growth_percentage = calculate_growth(stock_data)
+                st.write(f"**Growth Value**: {growth_value:.2f}")
+                st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
+                      
+                fig = create_candlestick_chart(stock_data, symbol)
+                st.plotly_chart(fig)
 
-            # Calculate growth and display it
-            growth_value, growth_percentage = calculate_growth(stock_data)
-            st.write(f"**Growth Value**: {growth_value:.2f}")
-            st.write(f"**Growth Percentage**: {growth_percentage:.2f}%")
-                    
-            fig = create_candlestick_chart(stock_data, symbol)
-            st.plotly_chart(fig)
-
+                                  
     if st.sidebar.button('New Analysis'):
         # Show "New Analysis" button only if "Show Results" button has been clicked
         if show_results_clicked:
@@ -225,3 +216,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
