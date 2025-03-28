@@ -37,9 +37,14 @@ def calculate_growth(data):
 
 def get_stock_data(symbol, start_date, end_date):
     data = yf.download(symbol, start=start_date, end=end_date)
+    
+    # Flatten the MultiIndex columns
+    data.columns = [col[0] for col in data.columns]
+    
     st.write(f"Columns available for {symbol}: {data.columns}")
     data.reset_index(inplace=True)
     return data
+
 
 
 def calculate_profit_loss(data):
