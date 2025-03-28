@@ -104,6 +104,13 @@ def format_data(data):
     # Reorder columns to the desired order
     data = data[ordered_columns]
 
+    # Ensure all required columns exist before applying the formatting
+    required_columns = ['Profit-Loss', 'Adj/Open', 'End_Result']
+    for col in required_columns:
+        if col not in data.columns:
+            st.warning(f"Column '{col}' is missing in the data and cannot be styled.")
+            return data  # Return the unstyled data if any required columns are missing
+
     # Apply color formatting to the 'Profit-Loss', 'Adj/Open', and 'End_Result' columns
     styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'Adj/Open', 'End_Result'])
 
