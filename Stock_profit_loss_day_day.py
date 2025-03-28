@@ -98,10 +98,16 @@ def format_data(data):
     # Round numerical columns to 3 decimal places
     data[float_columns] = data[float_columns].applymap(lambda x: round(x, 3) if pd.notnull(x) else x)
 
-     # Apply color formatting to the 'Profit-Loss' 'Adj/Open' and 'End_Result' columns
-    styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'Adj/Open','End_Result'])
+    # Create the ordered column list
+    ordered_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj/Open', 'Profit-Loss', 'End_Result', 'Volume']
 
-     # Ensure that the formatted table displays values with 3 decimal places
+    # Reorder columns to the desired order
+    data = data[ordered_columns]
+
+    # Apply color formatting to the 'Profit-Loss', 'Adj/Open', and 'End_Result' columns
+    styled_data = data.style.applymap(color_profit_loss, subset=['Profit-Loss', 'Adj/Open', 'End_Result'])
+
+    # Ensure that the formatted table displays values with 3 decimal places
     styled_data = styled_data.format(subset=float_columns, formatter="{:.3f}")
     
     return styled_data
