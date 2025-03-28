@@ -1,4 +1,4 @@
 streamlit
 pandas
-yfinance>=0.2.44
+yfinance>=0.2.55
 plotly
