@@ -1,117 +1,73 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
-from datetime import date
+import yfinance as yf
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
-st.title("Advanced Stock Data Analyzer")
+def get_stock_data(symbol, start_date, end_date):
+    data = yf.download(symbol, start=start_date, end=end_date)
+    data.reset_index(inplace=True)
+    return data
 
-# Function to fetch comprehensive stock data
-def fetch_stock_data(symbols, start_date, end_date):
-    try:
-        data = yf.download(
-            symbols.split(','),
-            start=start_date,
-            end=end_date,
-            group_by='ticker',
-            progress=False,
-            threads=True
-        )
-        
-        if data.empty:
-            st.error("No data found for the given symbols and date range")
-            return None
-            
-        return data
-
-    except Exception as e:
-        st.error(f"Error fetching data: {str(e)}")
-        return None
-
-# Function to get additional fundamental data
-def get_fundamentals(symbol):
-    try:
-        ticker = yf.Ticker(symbol)
-        return {
-            'info': ticker.info,
-            'financials': ticker.financials,
-            'balance_sheet': ticker.balance_sheet,
-            'cashflow': ticker.cashflow,
-            'recommendations': ticker.recommendations,
-            'institutional_holders': ticker.institutional_holders
-        }
-    except Exception as e:
-        st.error(f"Error getting fundamentals for {symbol}: {str(e)}")
-        return None
-
-# Main form
-with st.form(key='stock_form'):
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        symbols = st.text_input("Enter symbols (comma-separated)", "AAPL,MSFT,GOOG")
-    with col2:
-        start_date = st.date_input("Start date", date(2020, 1, 1))
-    with col3:
-        end_date = st.date_input("End date", date.today())
+def format_data(data):
+    # Ensure 'Date' is in date format (remove time part if present)
+    data['Date'] = pd.to_datetime(data['Date']).dt.date
     
-    analysis_type = st.selectbox("Analysis Type", [
-        "Historical Prices", 
-        "Fundamental Data", 
-        "Institutional Holdings",
-        "Analyst Recommendations"
-    ])
+    # Define columns to be displayed and rounded
+    display_columns = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+    float_columns = ['Open', 'High', 'Low', 'Close', 'Adj Close']
     
-    submit_button = st.form_submit_button("Run Analysis")
+    # Round numerical columns to 3 decimal places
+    data[float_columns] = data[float_columns].round(3)
+    
+    # Format Volume as integer
+    data['Volume'] = data['Volume'].astype(int)
+    
+    return data[display_columns]
 
-# Process form submission
-if submit_button:
-    if start_date > end_date:
-        st.error("End date must be after start date")
-    else:
-        with st.spinner('Analyzing data...'):
-            if analysis_type == "Historical Prices":
-                data = fetch_stock_data(symbols, start_date, end_date)
-                if data is not None:
-                    st.success("Found the following datasets:")
-                    
-                    # Show multi-ticker selection
-                    symbols_list = symbols.split(',')
-                    selected_symbol = st.selectbox("Select Symbol", symbols_list)
-                    
-                    # Show available metrics
-                    metrics = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-                    selected_metrics = st.multiselect("Select Metrics", metrics, default='Close')
-                    
-                    # Display selected data
-                    if len(symbols_list) > 1:
-                        st.dataframe(data[selected_symbol][selected_metrics])
-                    else:
-                        st.dataframe(data[selected_metrics])
-                        
-            else:
-                fundamental_data = get_fundamentals(symbols.split(',')[0])
-                if fundamental_data:
-                    if analysis_type == "Fundamental Data":
-                        st.subheader("Financial Statements")
-                        st.dataframe(fundamental_data['financials'])
-                        
-                    elif analysis_type == "Institutional Holdings":
-                        st.subheader("Top Institutional Holders")
-                        st.dataframe(fundamental_data['institutional_holders'])
-                        
-                    elif analysis_type == "Analyst Recommendations":
-                        st.subheader("Analyst Recommendations History")
-                        st.dataframe(fundamental_data['recommendations'])
+def create_candlestick_chart(data, symbol):
+    fig = go.Figure(data=[go.Candlestick(
+        x=data['Date'],
+        open=data['Open'],
+        high=data['High'],
+        low=data['Low'],
+        close=data['Close'],
+        name='Candlestick'
+    )])
 
-# Reset button
-if st.button("Reset Analysis"):
-    st.experimental_rerun()
+    fig.update_layout(
+        title=f'{symbol} Stock Price',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        xaxis_rangeslider_visible=False
+    )
 
-# Help section
-with st.expander("Usage Instructions"):
-    st.markdown("""
-    - **Multiple Symbols**: Enter comma-separated tickers (e.g., `AAPL,MSFT,GOOG`)
-    - **Historical Prices**: View OHLC data, volume, and adjusted close
-    - **Fundamental Data**: See financial statements for individual companies
-    - **Institutional Holdings**: View top institutional investors
-    - **Analyst Recommendations**: See recent analyst ratings
-    """)
+    return fig
+
+def main():
+    st.title('Stock Data Analysis')
+
+    st.sidebar.header('User Input')
+    symbols_input = st.sidebar.text_input('Enter stock symbols (comma-separated)', 'AAPL,GOOGL,MSFT')
+    symbols = [symbol.strip() for symbol in symbols_input.split(',')]
+    start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2024-01-01'))
+    end_date = st.sidebar.date_input('End Date', value=datetime.now().date() + timedelta(days=1))
+
+    if st.sidebar.button('Show Results'):
+        for symbol in symbols:
+            stock_data = get_stock_data(symbol, start_date, end_date)
+
+            if not stock_data.empty:
+                formatted_data = format_data(stock_data)
+
+                st.subheader(f'{symbol} Stock Data')
+                st.dataframe(formatted_data, use_container_width=True)
+
+                fig = create_candlestick_chart(stock_data, symbol)
+                st.plotly_chart(fig)
+
+    if st.sidebar.button('New Analysis'):
+        st.experimental_rerun()
+
+if __name__ == "__main__":
+    main()
